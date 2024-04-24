@@ -10,16 +10,12 @@ import { CustomScrollbars } from "@captn/joy/custom-scrollbars";
 import Select from "@mui/joy/Select";
 import Option from "@mui/joy/Option";
 import ToggleButtonGroup from "@mui/joy/ToggleButtonGroup";
+import { Pads } from "@/components/sortable-pads";
+import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core/dist/types";
+import { arrayMove } from "@dnd-kit/sortable";
+import { PadProps } from "@/components/pad";
 
 const vt323 = createVT323({ weight: "400", subsets: ["latin"] });
-export interface PadProps {
-	id: string;
-	label: string;
-	info: string;
-	color: keyof typeof palette;
-	active?: boolean;
-	selected?: boolean;
-}
 
 export function Frame({ children, color }: { children?: ReactNode; color?: keyof typeof palette }) {
 	return (
@@ -117,31 +113,6 @@ export function Display({ text }: { text?: string }) {
 	);
 }
 
-export function Pad({
-	active,
-	children,
-	color,
-	disabled,
-	...properties
-}: Except<ButtonProps, "sx"> & Except<PadProps, "id">) {
-	return (
-		<Button
-			fullWidth
-			disabled={disabled}
-			color={color}
-			variant={active ? "solid" : "outlined"}
-			sx={{
-				aspectRatio: 1,
-				"--variant-borderWidth": "4px",
-				borderRadius: "md",
-			}}
-			{...properties}
-		>
-			{children}
-		</Button>
-	);
-}
-
 const colors = Object.keys(palette).filter(key => key !== "grey") as (keyof Except<
 	typeof palette,
 	"grey"
@@ -167,6 +138,7 @@ const defaultSizes: { id: string; height: number; width: number }[] = [
 export default function Page() {
 	const [pads, setPads] = useState<PadProps[]>(defaultPads);
 	const [hoveredPadId, setHoveredPadId] = useState<null | string>(null);
+	const [activeId, setActiveId] = useState<string | number | null>(null);
 	const [selectedPads, setSelectedPads] = useState("presets");
 	const [sizeValue, setSizeValue] = useState("1");
 	const [size, setSize] = useState({ height: 512, width: 512 });
@@ -174,8 +146,27 @@ export default function Page() {
 	const hasSelection = pads.some(pad => pad.selected);
 	const selectedPad = pads.find(pad => pad.selected);
 	const hoveredPad = pads.find(pad => pad.id === hoveredPadId);
+
+	function handleDragEnd(event: DragEndEvent) {
+		const { active, over } = event;
+		setActiveId(null);
+
+		if (active.id !== over?.id) {
+			setPads(previousState => {
+				const oldIndex = previousState.findIndex(item => active.id === item.id);
+				const newIndex = previousState.findIndex(item => over?.id === item.id);
+
+				return arrayMove(previousState, oldIndex, newIndex);
+			});
+		}
+	}
+
+	function handleDragStart(event: DragStartEvent) {
+		setActiveId(event.active.id);
+	}
+
 	return (
-		<Layout title="Main Window">
+		<Layout title="Captain VJ">
 			<Box sx={{ px: 3, py: 2, display: "flex", justifyContent: "center" }}>
 				<Box
 					sx={{
@@ -284,7 +275,36 @@ export default function Page() {
 						</Box>
 						<Box data-skip-inverted-colors sx={{ flex: 1, height: 800 }}>
 							<Frame color={editMode ? "lime" : "grey"}>
-								<ButtonGrid>
+								<Pads
+									activeId={activeId}
+									pads={pads}
+									onDragEnd={handleDragEnd}
+									onDragStart={handleDragStart}
+									editMode={editMode}
+									onPadClick={pad => {
+										if (editMode) {
+											setPads(previousState =>
+												previousState.map(pad_ =>
+													pad_.id === pad.id
+														? {
+																...pad_,
+																selected: !pad_.selected,
+															}
+														: pad_
+												)
+											);
+										} else {
+											setPads(previousState =>
+												previousState.map(pad_ =>
+													pad_.id === pad.id
+														? { ...pad_, active: !pad_.active }
+														: { ...pad_, active: false }
+												)
+											);
+										}
+									}}
+								/>
+								{/*<ButtonGrid>
 									{pads.map((pad, index) => (
 										<Pad
 											disabled={hasSelection && !pad.selected}
@@ -323,7 +343,7 @@ export default function Page() {
 											}}
 										/>
 									))}
-								</ButtonGrid>
+								</ButtonGrid>*/}
 							</Frame>
 						</Box>
 					</Box>
