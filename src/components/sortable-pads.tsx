@@ -1,5 +1,6 @@
 import {
 	DndContext,
+	DraggableAttributes,
 	DragOverlay,
 	KeyboardSensor,
 	PointerSensor,
@@ -15,13 +16,11 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Portal } from "@mui/base";
 import Box from "@mui/joy/Box";
-import Button from "@mui/joy/Button";
 import { type ReactNode, useMemo } from "react";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core/dist/types";
 import { Pad, PadProps } from "@/components/pad";
 import IconButton from "@mui/joy/IconButton";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-
 export function AutoGrid({ children, minWidth }: { children?: ReactNode; minWidth: number }) {
 	return (
 		<Box
@@ -29,6 +28,7 @@ export function AutoGrid({ children, minWidth }: { children?: ReactNode; minWidt
 				display: "grid",
 				gridTemplateColumns: `repeat(auto-fill, minmax(${minWidth}px, 1fr))`,
 				gap: 1,
+				p: 1,
 				overflow: "hidden",
 			}}
 		>
@@ -39,11 +39,11 @@ export function AutoGrid({ children, minWidth }: { children?: ReactNode; minWidt
 
 export function SortableItem({
 	id,
-	children,
+	renderChild,
 	disabled,
 }: {
 	id: string;
-	children?: ReactNode;
+	renderChild: (attributes: DraggableAttributes) => ReactNode;
 	disabled?: boolean;
 }) {
 	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -58,9 +58,8 @@ export function SortableItem({
 	};
 
 	return (
-		<Box ref={setNodeRef} style={style} {...attributes} sx={{ position: "relative" }}>
-			{children}
-
+		<Box ref={setNodeRef} style={style} sx={{ position: "relative" }}>
+			{renderChild(attributes)}
 			{!disabled && (
 				<IconButton {...listeners} sx={{ position: "absolute", top: 0, right: 0 }}>
 					<DragIndicatorIcon />
@@ -104,12 +103,18 @@ export function Pads({
 			<Portal>
 				<DragOverlay>
 					{activeItem && (
-						<Box key={activeItem.id} sx={{ position: "relative" }}>
+						<Box
+							key={activeItem.id}
+							sx={{
+								position: "relative",
+							}}
+						>
 							<Pad
 								active={activeItem.active}
 								label={activeItem.label}
 								info={activeItem.info}
 								color={activeItem.color}
+								style={{ transform: "scale(1.125)", transformOrigin: "50% 50%" }}
 							/>
 							<IconButton sx={{ position: "absolute", top: 0, right: 0 }}>
 								<DragIndicatorIcon />
@@ -119,24 +124,29 @@ export function Pads({
 				</DragOverlay>
 			</Portal>
 			<SortableContext strategy={rectSortingStrategy} items={pads.map(({ id }) => id)}>
-				<Box sx={{ overflow: "auto", height: "100%", mr: -1 }}>
+				<Box sx={{ overflow: "auto", height: "100%", m: -1 }}>
 					<AutoGrid minWidth={100}>
 						{pads.map(pad => (
-							<SortableItem key={pad.id} id={pad.id} disabled={!editMode}>
-								<Pad
-									disabled={someSelectedItem && !pad.selected}
-									active={pad.active}
-									label={pad.label}
-									info={pad.info}
-									color={pad.color}
-									style={{ opacity: activeId === pad.id ? 0 : 1 }}
-									onClick={() => {
-										if (onPadClick) {
-											onPadClick(pad);
-										}
-									}}
-								/>
-							</SortableItem>
+							<SortableItem
+								key={pad.id}
+								id={pad.id}
+								disabled={!editMode}
+								renderChild={attributes => (
+									<Pad
+										disabled={someSelectedItem && !pad.selected}
+										active={pad.active}
+										label={pad.label}
+										info={pad.info}
+										color={pad.color}
+										{...attributes}
+										onClick={() => {
+											if (onPadClick) {
+												onPadClick(pad);
+											}
+										}}
+									/>
+								)}
+							/>
 						))}
 					</AutoGrid>
 				</Box>

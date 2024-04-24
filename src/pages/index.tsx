@@ -1,12 +1,11 @@
 import Layout from "@/components/layout";
 import Box from "@mui/joy/Box";
-import Button, { ButtonProps } from "@mui/joy/Button";
+import Button from "@mui/joy/Button";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import Sheet from "@mui/joy/Sheet";
 import { Except } from "type-fest";
 import { palette } from "@captn/theme/palette";
 import { VT323 as createVT323 } from "next/font/google";
-import { CustomScrollbars } from "@captn/joy/custom-scrollbars";
 import Select from "@mui/joy/Select";
 import Option from "@mui/joy/Option";
 import ToggleButtonGroup from "@mui/joy/ToggleButtonGroup";
@@ -14,6 +13,12 @@ import { Pads } from "@/components/sortable-pads";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core/dist/types";
 import { arrayMove } from "@dnd-kit/sortable";
 import { PadProps } from "@/components/pad";
+import { v4 } from "uuid";
+import IconButton from "@mui/joy/IconButton";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
+import RestoreIcon from "@mui/icons-material/Restore";
+import EditIcon from "@mui/icons-material/Edit";
 
 const vt323 = createVT323({ weight: "400", subsets: ["latin"] });
 
@@ -29,31 +34,6 @@ export function Frame({ children, color }: { children?: ReactNode; color?: keyof
 			}}
 		>
 			{children}
-		</Sheet>
-	);
-}
-
-export function ButtonGrid({ children }: { children?: ReactNode }) {
-	return (
-		<Sheet
-			sx={{
-				height: "100%",
-				position: "relative",
-				mx: -1,
-			}}
-		>
-			<CustomScrollbars>
-				<Box
-					sx={{
-						display: "grid",
-						gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
-						gap: 2,
-						px: 1,
-					}}
-				>
-					{children}
-				</Box>
-			</CustomScrollbars>
 		</Sheet>
 	);
 }
@@ -136,8 +116,7 @@ const defaultSizes: { id: string; height: number; width: number }[] = [
 ];
 
 export default function Page() {
-	const [pads, setPads] = useState<PadProps[]>(defaultPads);
-	const [hoveredPadId, setHoveredPadId] = useState<null | string>(null);
+	const [pads, setPads] = useState<PadProps[]>([]);
 	const [activeId, setActiveId] = useState<string | number | null>(null);
 	const [selectedPads, setSelectedPads] = useState("presets");
 	const [sizeValue, setSizeValue] = useState("1");
@@ -145,7 +124,6 @@ export default function Page() {
 	const [editMode, setEditMode] = useState(false);
 	const hasSelection = pads.some(pad => pad.selected);
 	const selectedPad = pads.find(pad => pad.selected);
-	const hoveredPad = pads.find(pad => pad.id === hoveredPadId);
 
 	function handleDragEnd(event: DragEndEvent) {
 		const { active, over } = event;
@@ -204,7 +182,7 @@ export default function Page() {
 						<Box data-skip-inverted-colors>
 							<Frame>
 								<Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-									<Display text={hoveredPad?.label ?? selectedPad?.label ?? ""} />
+									<Display text={selectedPad?.label ?? "Hello VJS"} />
 									<Canvas height={size.height} width={size.width} />
 								</Box>
 							</Frame>
@@ -242,23 +220,8 @@ export default function Page() {
 								</Button>
 							</ToggleButtonGroup>
 							<Box sx={{ flex: 1 }} />
-							<Button
-								color={editMode ? "lime" : "grey"}
-								variant={editMode ? "solid" : "soft"}
-								sx={{ borderRadius: "md" }}
-								onClick={() => {
-									setPads(previousState =>
-										previousState.map(pad_ => ({
-											...pad_,
-											selected: false,
-										}))
-									);
-									setEditMode(previousState => !previousState);
-								}}
-							>
-								Edit
-							</Button>
-							<Button
+							<IconButton
+								variant="solid"
 								disabled={!editMode || !hasSelection}
 								sx={{ borderRadius: "md" }}
 								onClick={() => {
@@ -270,8 +233,48 @@ export default function Page() {
 									);
 								}}
 							>
-								Cancel
-							</Button>
+								<RestoreIcon />
+							</IconButton>
+							<IconButton
+								variant="solid"
+								disabled={!editMode || !hasSelection}
+								onClick={() => {
+									setPads(previousState =>
+										previousState.filter(pad_ => pad_.id !== selectedPad?.id)
+									);
+								}}
+							>
+								<RemoveIcon />
+							</IconButton>
+							<IconButton
+								variant="solid"
+								disabled={!editMode}
+								sx={{ borderRadius: "md" }}
+								onClick={() => {
+									setPads(previousState => [
+										...previousState,
+										{ id: v4(), label: "New Pad", info: "", color: "grey" },
+									]);
+								}}
+							>
+								<AddIcon />
+							</IconButton>
+							<IconButton
+								color={editMode ? "lime" : "grey"}
+								variant="solid"
+								sx={{ borderRadius: "md" }}
+								onClick={() => {
+									setPads(previousState =>
+										previousState.map(pad_ => ({
+											...pad_,
+											selected: false,
+										}))
+									);
+									setEditMode(previousState => !previousState);
+								}}
+							>
+								<EditIcon />
+							</IconButton>
 						</Box>
 						<Box data-skip-inverted-colors sx={{ flex: 1, height: 800 }}>
 							<Frame color={editMode ? "lime" : "grey"}>
